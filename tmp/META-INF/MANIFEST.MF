@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Permissions: sandbox
+Application-Name: hello World
+Codebase *
+Caller-Allowable-Codebase: localhost 127.0.0.2
+Application-Library-Allowable-Codebase: https://localhost
+Trusted-Only:true
+Trusted-Library: true
