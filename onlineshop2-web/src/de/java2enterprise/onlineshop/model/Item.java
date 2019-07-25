@@ -3,107 +3,113 @@ package de.java2enterprise.onlineshop.model;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+import javax.persistence.*;
+
+
+/**
+ * The persistent class for the ITEM database table.
+ * 
+ */
+@Entity
+@Table(
+		schema = "ONLINESHOP",
+		name = "ITEM"
+)
+@NamedQuery(name="Item.findAll", query="SELECT i FROM Item i")
 public class Item implements Serializable {
-    private static final long 
-        serialVersionUID = -6604363993041715170L;
-    
-    private Long id;
-    private String title;
-    private String description;
-    private Double price;
-    private byte[] foto;
-    private Long seller;
-    private Long buyer;
-    private LocalDateTime sold;
-    
-    public Item() {}
-    
-    public Item(
-            String title,
-            String description,
-            Double price,
-            Long seller) {
-        this.title = title;
-        this.description = description;
-        this.price = price;
-        this.seller = seller;
-    }
-    
-    public Long getId() {
-        return id;
-    }
-    
-    public void setId(Long id) {
-        this.id = id;
-    }
+	private static final long serialVersionUID = 1L;
 
-    public String getTitle() {
-        return title;
-    }
+	@Id
+	@SequenceGenerator(name="ITEM_ID_GENERATOR", sequenceName="SEQ_ITEM", 
+						schema = "ONLINESHOP",allocationSize=1, initialValue=1)
+	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="ITEM_ID_GENERATOR")
+	private Long id;
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+	private String description;
+	
+	@Basic(fetch=FetchType.LAZY)
+	@Lob
+	private byte[] foto;
 
-    public String getDescription() {
-        return description;
-    }
+	private Double price;
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+	private LocalDateTime sold;
 
-    public Double getPrice() {
-        return price;
-    }
+	private String title;
 
-    public void setPrice(Double price) {
-        this.price = price;
-    }
+	//bi-directional many-to-one association to Customer
+	@ManyToOne
+	private Customer seller;
 
-    public byte[] getFoto() {
-        return foto;
-    }
+	//bi-directional many-to-one association to Customer
+	@ManyToOne
+	private Customer buyer;
 
-    public void setFoto(byte[] foto) {
-        this.foto = foto;
-    }
+	public Item() {
+	}
 
-    public Long getSeller() {
-        return seller;
-    }
+	public Long getId() {
+		return this.id;
+	}
 
-    public void setSeller(Long seller) {
-        this.seller = seller;
-    }
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    public Long getBuyer() {
-        return this.buyer;
-    }
+	public String getDescription() {
+		return this.description;
+	}
 
-    public void setBuyer(Long buyer) {
-        this.buyer = buyer;
-    }
+	public void setDescription(String description) {
+		this.description = description;
+	}
 
-    public LocalDateTime getSold() {
-        return sold;
-    }
+	public byte[] getFoto() {
+		return this.foto;
+	}
 
-    public void setSold(LocalDateTime sold) {
-        this.sold = sold;
-    }
-    
-    public String toString() {
-        return 
-            "[" +   
-            getId() + "," + 
-            getTitle() + "," + 
-            getDescription() + "," +
-            getPrice() + "," +
-            getSeller() + "," +
-            getBuyer() + "," +
-            getSold() + 
-            "]";
-    }
-    
+	public void setFoto(byte[] foto) {
+		this.foto = foto;
+	}
+
+	public Double getPrice() {
+		return this.price;
+	}
+
+	public void setPrice(Double price) {
+		this.price = price;
+	}
+
+	public LocalDateTime getSold() {
+		return this.sold;
+	}
+
+	public void setSold(LocalDateTime  sold) {
+		this.sold = sold;
+	}
+
+	public String getTitle() {
+		return this.title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public Customer getSeller() {
+		return this.seller;
+	}
+
+	public void setSeller(Customer seller) {
+		this.seller = seller;
+	}
+
+	public Customer getBuyer() {
+		return this.buyer;
+	}
+
+	public void setBuyer(Customer buyer) {
+		this.buyer = buyer;
+	}
+
 }

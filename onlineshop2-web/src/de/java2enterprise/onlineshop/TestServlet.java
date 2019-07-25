@@ -2,9 +2,6 @@ package de.java2enterprise.onlineshop;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-
-import javax.annotation.Resource;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceUnit;
@@ -13,14 +10,13 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.sql.DataSource;
 
 
 @WebServlet("/test")
 public class TestServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
-   /* @PersistenceUnit
+    @PersistenceUnit
     private EntityManagerFactory emf;
     
     public void doGet(
@@ -37,7 +33,7 @@ public class TestServlet extends HttpServlet {
         writer.println("</body></html>");
         em.close();
     }
-   */
+   /*
    @Resource
     private DataSource ds;
     
@@ -60,5 +56,5 @@ public class TestServlet extends HttpServlet {
         }
         writer.println(
         "<BR>Test finished!</body></html>");
-    }
+    }*/
 }

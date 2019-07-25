@@ -14,6 +14,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import javax.sql.DataSource;
 
 @WebServlet("/foto")
@@ -29,7 +30,7 @@ public class FotoServlet extends HttpServlet {
             throws ServletException, IOException {
 
         String id = request.getParameter("id");
-
+        HttpSession session = request.getSession();
         try (final Connection con = ds.getConnection();
                 final PreparedStatement stmt = con
                         .prepareStatement(
@@ -60,8 +61,8 @@ public class FotoServlet extends HttpServlet {
                 out.flush();
                 foto = null;
             }
-        } catch (Exception ex) {
-            throw new ServletException(ex.getMessage());
+        } catch (Exception e) {
+            session.setAttribute("message", e.getMessage());
         }
     }
 }

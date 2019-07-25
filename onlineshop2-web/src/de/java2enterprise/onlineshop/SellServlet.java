@@ -8,12 +8,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 
 import javax.annotation.Resource;
 import javax.imageio.ImageIO;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
@@ -23,7 +23,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.servlet.http.Part;
-import javax.sql.DataSource;
+import javax.transaction.UserTransaction;
 
 import de.java2enterprise.onlineshop.model.Customer;
 import de.java2enterprise.onlineshop.model.Item;
@@ -38,118 +38,100 @@ public class SellServlet extends HttpServlet {
 	 private static final long serialVersionUID = 1L;
 	 public final static int MAX_IMAGE_LENGTH = 400;
 	 
-	 @Resource
-	 private DataSource ds;
+	    @PersistenceContext
+	    private EntityManager em;
+	    
+	    @Resource
+	    private UserTransaction ut;
 
 
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		Part part = request.getPart("foto");
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            InputStream in = part.getInputStream();
-            int i = 0;
-            while ((i = in.read()) != -1) {
-                baos.write(i);
-            }
-        } catch (IOException ex) {
-            throw new ServletException(ex.getMessage());
-        }
+	    public void doPost(HttpServletRequest request,
+	            HttpServletResponse response)
+	            throws ServletException, IOException {
 
-        HttpSession session = request.getSession();
-        Object customer = session.getAttribute("customer");
-        if (customer != null) {
-            String title = request.getParameter("title");
-            String description = request
-                    .getParameter("description");
-            String price = request.getParameter("price");
+	        Part part = request.getPart("foto");
+	        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	        HttpSession session = request.getSession();
+	        try {
+	            InputStream in = part.getInputStream();
+	            int i = 0;
+	            while ((i = in.read()) != -1) {
+	                baos.write(i);
+	            }
 
-            Item item = new Item();
-            item.setTitle(title);
-            item.setDescription(description);
-            item.setPrice(Double.valueOf(price));
-            item.setSeller(((Customer) customer).getId());
-            item.setFoto(scale(baos.toByteArray()));
-            baos.flush();
+	            Customer customer = 
+	                    em.find(Customer.class, 
+	                            ((Customer) session.getAttribute("customer")).getId());
+	            
+	            if (customer != null) {
+	                String title = request.getParameter("title");
+	                String description = request.getParameter("description");
+	                String price = request.getParameter("price");
+	    
+	                Item item = new Item();
+	                item.setTitle(title);
+	                item.setDescription(description);
+	                item.setPrice(Double.valueOf(price));
+	                item.setSeller(customer);
+	                item.setFoto(scale(baos.toByteArray()));
+	                baos.flush();
+	    
+	                ut.begin();
+	                em.persist(item);
+	                ut.commit();
+	                RequestDispatcher dispatcher = request.getRequestDispatcher("index.jsp");
+	                dispatcher.forward(request, response);
+	            }
+	        } catch (Exception e) {
+	            session.setAttribute("message", e.getMessage());
+	        }
+	    }
+	    
+	    public byte[] scale(byte[] foto) throws IOException {
+	        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(
+	                foto);
+	        BufferedImage originalBufferedImage = ImageIO
+	                .read(byteArrayInputStream);
 
-            try {
-                persist(item);
-            } catch (Exception e) {
-                throw new ServletException(e.getMessage());
-            }
-            RequestDispatcher dispatcher = request
-                    .getRequestDispatcher("index.jsp");
-            dispatcher.forward(request, response);
-        }
-    }
+	        double originalWidth = (double) originalBufferedImage
+	                .getWidth();
+	        double originalHeight = (double) originalBufferedImage
+	                .getHeight();
+	        double relevantLength = originalWidth > originalHeight
+	                ? originalWidth
+	                : originalHeight;
+	        double transformationScale = MAX_IMAGE_LENGTH
+	                / relevantLength;
 
-    public void persist(Item item) throws Exception {
-        String[] autogeneratedKeys = new String[] { "id" };
-        try (final Connection con = ds.getConnection();
-                final PreparedStatement stmt = con
-                        .prepareStatement(
-                                "INSERT INTO onlineshop.item ("
-                                        + "title, "
-                                        + "description, "
-                                        + "price, "
-                                        + "foto, "
-                                        + "seller_id "
-                                        + ") VALUES ("
-                                        + "?, " + "?, "
-                                        + "?, " + "?, "
-                                        + "?" + ") ",
-                                autogeneratedKeys)) {
-            stmt.setString(1, item.getTitle());
-            stmt.setString(2, item.getDescription());
-            stmt.setDouble(3, item.getPrice());
-            stmt.setBytes(4, item.getFoto());
-            stmt.setLong(5, item.getSeller());
-            stmt.executeUpdate();
+	        int width = (int) Math
+	                .round(transformationScale * originalWidth);
+	        int height = (int) Math.round(
+	                transformationScale * originalHeight);
 
-            ResultSet rs = stmt.getGeneratedKeys();
-            Long id = null;
-            while (rs.next()) {
-                id = rs.getLong(1);
-                item.setId(id);
-            }
-        }
-    }
+	        BufferedImage resizedBufferedImage = new BufferedImage(
+	                width,
+	                height,
+	                BufferedImage.TYPE_INT_RGB);
+	        Graphics2D g2d = resizedBufferedImage
+	                .createGraphics();
+	        g2d.setRenderingHint(
+	                RenderingHints.KEY_INTERPOLATION,
+	                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
 
-    public byte[] scale(byte[] foto) throws IOException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(foto);
-        BufferedImage originalBufferedImage = ImageIO.read(byteArrayInputStream);
+	        AffineTransform affineTransform = AffineTransform
+	                .getScaleInstance(transformationScale,
+	                        transformationScale);
+	        g2d.drawRenderedImage(originalBufferedImage,
+	                affineTransform);
 
-        double originalWidth = (double) originalBufferedImage.getWidth();
-        double originalHeight = (double) originalBufferedImage.getHeight();
-        double relevantLength = originalWidth > originalHeight
-                ? originalWidth
-                : originalHeight;
-        double transformationScale = MAX_IMAGE_LENGTH / relevantLength;
-
-        int width = (int) Math.round(transformationScale * originalWidth);
-        int height = (int) Math.round(transformationScale * originalHeight);
-
-        BufferedImage resizedBufferedImage = new BufferedImage(
-                width,
-                height,
-                BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = resizedBufferedImage.createGraphics();
-        g2d.setRenderingHint(
-                RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-
-        AffineTransform affineTransform = AffineTransform
-                .getScaleInstance(transformationScale,
-                        transformationScale);
-        g2d.drawRenderedImage(originalBufferedImage,
-                affineTransform);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(resizedBufferedImage, "PNG", baos);
-        return baos.toByteArray();
+	        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	        ImageIO.write(resizedBufferedImage, "PNG", baos);
+	        return baos.toByteArray();
+	    }
+	
 
 		    //final AsyncContext ac = request.startAsync();
 
@@ -193,6 +175,5 @@ public class SellServlet extends HttpServlet {
 	        out.println("</body>");
 	        out.println("</html>");
 	        */   
-	}
 
 }
